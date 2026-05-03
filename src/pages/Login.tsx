@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield } from "lucide-react";
-import { initializeStore, login } from "@/lib/store";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,31 +11,59 @@ import logoChoque from "@/assets/logo-choque.png";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [nome, setNome] = useState("");
+
+  const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initializeStore().finally(() => setReady(true));
+    // 🔥 apenas libera interface (não precisa mais de store)
+    setReady(true);
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!nome || !senha) {
-      toast({ title: "Preencha nome e senha", variant: "destructive" });
+
+    if (!email || !senha) {
+      toast({
+        title: "Preencha email e senha",
+        variant: "destructive",
+      });
       return;
     }
+
     setLoading(true);
+
     try {
-      await initializeStore();
-      const user = login(nome, senha);
-      if (!user) {
-        toast({ title: "Credenciais inválidas", variant: "destructive" });
-        return;
-      }
-      toast({ title: `Bem-vindo, ${user.nome}` });
+      // 🔐 LOGIN COM FIREBASE
+      await signInWithEmailAndPassword(auth, email, senha);
+
+      toast({
+        title: "Acesso autorizado",
+        description: "Bem-vindo ao sistema",
+      });
+
       navigate("/painel");
+
+    } catch (error: any) {
+      if (error.code === "auth/user-not-found") {
+        toast({
+          title: "Usuário não autorizado",
+          variant: "destructive",
+        });
+      } else if (error.code === "auth/wrong-password") {
+        toast({
+          title: "Senha incorreta",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao fazer login",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -43,8 +72,14 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-16 bg-background">
       <div className="w-full max-w-md bg-card border border-border rounded-lg p-8 shadow-lg">
+        
+        {/* HEADER */}
         <div className="flex flex-col items-center mb-6">
-          <img src={logoChoque} alt="Logo Choque" className="h-16 w-16 mb-3 object-contain" />
+          <img
+            src={logoChoque}
+            alt="Logo Choque"
+            className="h-16 w-16 mb-3 object-contain"
+          />
           <h1 className="font-heading text-2xl uppercase tracking-widest text-foreground flex items-center gap-2">
             <Shield size={20} /> Acesso Restrito
           </h1>
@@ -53,19 +88,26 @@ export default function Login() {
           </p>
         </div>
 
+        {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="nome" className="uppercase text-xs tracking-wider">Nome</Label>
+            <Label htmlFor="email" className="uppercase text-xs tracking-wider">
+              Email
+            </Label>
             <Input
-              id="nome"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               autoComplete="username"
               disabled={loading || !ready}
             />
           </div>
+
           <div>
-            <Label htmlFor="senha" className="uppercase text-xs tracking-wider">Senha</Label>
+            <Label htmlFor="senha" className="uppercase text-xs tracking-wider">
+              Senha
+            </Label>
             <Input
               id="senha"
               type="password"
@@ -75,6 +117,7 @@ export default function Login() {
               disabled={loading || !ready}
             />
           </div>
+
           <Button
             type="submit"
             className="w-full uppercase tracking-wider"
