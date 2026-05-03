@@ -2,158 +2,239 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { ref, onValue, push, set, remove } from "firebase/database";
+import { ref, onValue, update, push } from "firebase/database";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 
-type Membro = {
+type Usuario = {
   id: string;
   nome: string;
+  email: string;
   patente: string;
+  permissao: "comandante" | "sub-comandante" | "membro";
+  status: "Ativo" | "Afastado" | "Demitido";
+};
+
+type Solicitacao = {
+  id: string;
+  usuarioId: string;
+  tipo: string;
+  valor: string;
   status: string;
+  criadoPor: string;
 };
 
 export default function Painel() {
   const navigate = useNavigate();
 
-  const [user, setUser] = useState<any>(null);
-  const [membros, setMembros] = useState<Membro[]>([]);
-  const [novoNome, setNovoNome] = useState("");
+  const [user, setUser] = useState<Usuario | null>(null);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔐 VERIFICA LOGIN
+  const [novoValor, setNovoValor] = useState("");
+
+  // 🔐 AUTENTICAÇÃO + DADOS DO USUÁRIO
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (!u) {
         navigate("/login");
-      } else {
-        setUser(u);
+        return;
       }
-      setLoading(false);
+
+      const snapshot = await onValue(ref(db, "usuarios/" + u.uid), (snap) => {
+        if (!snap.exists()) {
+          navigate("/login");
+          return;
+        }
+
+        setUser({
+          id: u.uid,
+          ...snap.val(),
+        });
+
+        setLoading(false);
+      });
     });
 
     return () => unsubscribe();
   }, []);
 
-  // 📦 CARREGA MEMBROS EM TEMPO REAL
+  // 📦 USUÁRIOS EM TEMPO REAL
   useEffect(() => {
-    const membrosRef = ref(db, "membros");
+    const usuariosRef = ref(db, "usuarios");
 
-    const unsubscribe = onValue(membrosRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
+    const unsubscribe = onValue(usuariosRef, (snap) => {
+      if (!snap.exists()) return;
 
-        const lista = Object.keys(data).map((id) => ({
-          id,
-          ...data[id],
-        }));
+      const data = snap.val();
 
-        setMembros(lista);
-      } else {
-        setMembros([]);
-      }
+      const lista = Object.keys(data).map((id) => ({
+        id,
+        ...data[id],
+      }));
+
+      setUsuarios(lista);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // ➕ ADICIONAR MEMBRO
-  async function adicionarMembro() {
-    if (!novoNome) {
-      toast({ title: "Digite um nome", variant: "destructive" });
+  // 📦 SOLICITAÇÕES
+  useEffect(() => {
+    const refSol = ref(db, "solicitacoes");
+
+    const unsubscribe = onValue(refSol, (snap) => {
+      if (!snap.exists()) {
+        setSolicitacoes([]);
+        return;
+      }
+
+      const data = snap.val();
+
+      const lista = Object.keys(data).map((id) => ({
+        id,
+        ...data[id],
+      }));
+
+      setSolicitacoes(lista);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 🧠 PERMISSÕES
+  const isComandante = user?.permissao === "comandante";
+  const isSub = user?.permissao === "sub-comandante";
+
+  // 📝 CRIAR SOLICITAÇÃO (MEMBRO)
+  async function solicitarAlteracao(usuarioId: string) {
+    if (!novoValor) {
+      toast({ title: "Digite um valor", variant: "destructive" });
       return;
     }
 
-    await push(ref(db, "membros"), {
-      nome: novoNome,
-      patente: "Recruta",
-      status: "Ativo",
-      criadoEm: Date.now(),
+    await push(ref(db, "solicitacoes"), {
+      usuarioId,
+      tipo: "patente",
+      valor: novoValor,
+      status: "pendente",
+      criadoPor: user?.nome,
     });
 
-    setNovoNome("");
-    toast({ title: "Membro adicionado" });
+    setNovoValor("");
+
+    toast({ title: "Solicitação enviada" });
   }
 
-  // 🗑️ REMOVER
-  async function removerMembro(id: string) {
-    await remove(ref(db, "membros/" + id));
-    toast({ title: "Removido" });
-  }
-
-  // ✏️ EDITAR (SIMPLES)
-  async function editarMembro(m: Membro) {
-    const novoNome = prompt("Novo nome:", m.nome);
-    if (!novoNome) return;
-
-    await set(ref(db, "membros/" + m.id), {
-      ...m,
-      nome: novoNome,
+  // ✅ APROVAR (COMANDANTE)
+  async function aprovar(s: Solicitacao) {
+    await update(ref(db, "usuarios/" + s.usuarioId), {
+      patente: s.valor,
     });
 
-    toast({ title: "Atualizado" });
+    await update(ref(db, "solicitacoes/" + s.id), {
+      status: "aprovada",
+    });
+
+    toast({ title: "Aprovado" });
   }
 
-  if (loading) {
+  // ❌ RECUSAR
+  async function recusar(id: string) {
+    await update(ref(db, "solicitacoes/" + id), {
+      status: "recusada",
+    });
+
+    toast({ title: "Recusado" });
+  }
+
+  if (loading || !user) {
     return <div className="text-center py-20">Carregando...</div>;
   }
 
   return (
-    <div className="container mx-auto px-4 py-24 space-y-6">
-      <h1 className="text-3xl font-bold">Painel</h1>
+    <div className="container mx-auto px-4 py-24 space-y-8">
 
-      <p className="text-sm text-muted-foreground">
-        Logado como: {user?.email}
-      </p>
-
-      {/* ➕ NOVO MEMBRO */}
-      <div className="bg-card border p-4 rounded space-y-2">
-        <Label>Nome</Label>
-        <Input
-          value={novoNome}
-          onChange={(e) => setNovoNome(e.target.value)}
-        />
-        <Button onClick={adicionarMembro}>Adicionar</Button>
+      {/* HEADER */}
+      <div>
+        <h1 className="text-3xl font-bold uppercase">Painel</h1>
+        <p className="text-sm text-muted-foreground">
+          {user.nome} • {user.permissao}
+        </p>
       </div>
 
-      {/* 📋 LISTA */}
-      <div className="space-y-2">
-        {membros.map((m) => (
-          <div
-            key={m.id}
-            className="flex justify-between items-center border p-3 rounded"
-          >
+      {/* 📋 USUÁRIOS */}
+      <div className="space-y-3">
+        <h2 className="text-xl font-bold">Usuários</h2>
+
+        {usuarios.map((u) => (
+          <div key={u.id} className="border p-4 rounded flex justify-between">
+
             <div>
-              <p className="font-bold">{m.nome}</p>
+              <p className="font-bold">{u.nome}</p>
               <p className="text-sm text-muted-foreground">
-                {m.patente} • {m.status}
+                {u.patente} • {u.status}
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => editarMembro(m)}>
-                Editar
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => removerMembro(m.id)}
-              >
-                Remover
-              </Button>
+            {/* 👇 MEMBRO */}
+            {!isComandante && (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nova patente"
+                  value={novoValor}
+                  onChange={(e) => setNovoValor(e.target.value)}
+                />
+                <Button onClick={() => solicitarAlteracao(u.id)}>
+                  Solicitar
+                </Button>
+              </div>
+            )}
+
+            {/* 👇 COMANDANTE */}
+            {isComandante && (
+              <div className="text-green-500 text-sm">
+                Controle total
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* 📦 SOLICITAÇÕES */}
+      <div className="space-y-3">
+        <h2 className="text-xl font-bold">Solicitações</h2>
+
+        {solicitacoes.map((s) => (
+          <div key={s.id} className="border p-4 rounded flex justify-between">
+
+            <div>
+              <p>{s.tipo} → {s.valor}</p>
+              <p className="text-sm text-muted-foreground">
+                {s.criadoPor} • {s.status}
+              </p>
             </div>
+
+            {isComandante && s.status === "pendente" && (
+              <div className="flex gap-2">
+                <Button onClick={() => aprovar(s)}>Aprovar</Button>
+                <Button variant="destructive" onClick={() => recusar(s.id)}>
+                  Recusar
+                </Button>
+              </div>
+            )}
           </div>
         ))}
 
-        {membros.length === 0 && (
-          <p className="text-center text-muted-foreground">
-            Nenhum membro cadastrado
-          </p>
+        {solicitacoes.length === 0 && (
+          <p className="text-muted-foreground">Nenhuma solicitação</p>
         )}
       </div>
+
     </div>
   );
 }
