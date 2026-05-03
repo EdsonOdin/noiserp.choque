@@ -1,10 +1,19 @@
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { set } from "firebase/database";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { ref, onValue, update, push } from "firebase/database";
+import {
+  onAuthStateChanged,
+  createUserWithEmailAndPassword
+} from "firebase/auth";
+
+import {
+  ref,
+  onValue,
+  update,
+  push,
+  set
+} from "firebase/database";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,18 +40,25 @@ type Solicitacao = {
 export default function Painel() {
   const navigate = useNavigate();
 
-const [novoNome, setNovoNome] = useState("");
-const [novoEmail, setNovoEmail] = useState("");
-const [novaSenha, setNovaSenha] = useState("");
-const [novaPatente, setNovaPatente] = useState("Recruta");
-const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandante" | "membro">("membro");
+  // 🔐 USER
   const [user, setUser] = useState<Usuario | null>(null);
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
-  const [novoValor, setNovoValor] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // 🔐 AUTH + DADOS
+  // 📦 DADOS
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
+
+  // ✍️ INPUTS
+  const [novoValor, setNovoValor] = useState("");
+
+  // 👤 CRIAR USUÁRIO
+  const [novoNome, setNovoNome] = useState("");
+  const [novoEmail, setNovoEmail] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [novaPatente, setNovaPatente] = useState("Recruta");
+  const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandante" | "membro">("membro");
+
+  // 🔐 AUTH
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       if (!u) return navigate("/login");
@@ -81,13 +97,46 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
   // 🧠 PERMISSÕES
   const isComandante = user?.permissao === "comandante";
   const isSub = user?.permissao === "sub-comandante";
-  const isMembro = user?.permissao === "membro";
 
-  // 👮 SUB → CRIA SOLICITAÇÃO
-  async function solicitar(usuarioId: string) {
-    if (!novoValor) {
-      return toast({ title: "Digite um valor", variant: "destructive" });
+  // 👤 CRIAR USUÁRIO
+  async function criarUsuario() {
+    if (!novoNome || !novoEmail || !novaSenha) {
+      return toast({ title: "Preencha tudo", variant: "destructive" });
     }
+
+    try {
+      const cred = await createUserWithEmailAndPassword(
+        auth,
+        novoEmail,
+        novaSenha
+      );
+
+      await set(ref(db, "usuarios/" + cred.user.uid), {
+        nome: novoNome,
+        email: novoEmail,
+        patente: novaPatente,
+        permissao: novaPermissao,
+        status: "Ativo",
+      });
+
+      toast({ title: "Usuário criado" });
+
+      setNovoNome("");
+      setNovoEmail("");
+      setNovaSenha("");
+
+    } catch (err: any) {
+      toast({
+        title: "Erro",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  }
+
+  // 👮 SUB → SOLICITA
+  async function solicitar(usuarioId: string) {
+    if (!novoValor) return;
 
     await push(ref(db, "solicitacoes"), {
       usuarioId,
@@ -98,7 +147,7 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
     });
 
     setNovoValor("");
-    toast({ title: "Solicitação criada" });
+    toast({ title: "Solicitado" });
   }
 
   // 👮 SUB → ENCAMINHAR
@@ -107,10 +156,10 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
       status: "analise",
     });
 
-    toast({ title: "Enviado ao comandante" });
+    toast({ title: "Encaminhado" });
   }
 
-  // 🧠 COMANDANTE → APROVAR
+  // 🧠 APROVAR
   async function aprovar(s: Solicitacao) {
     await update(ref(db, "usuarios/" + s.usuarioId), {
       patente: s.valor,
@@ -123,7 +172,7 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
     toast({ title: "Aprovado" });
   }
 
-  // 🧠 COMANDANTE → RECUSAR
+  // ❌ RECUSAR
   async function recusar(id: string) {
     await update(ref(db, "solicitacoes/" + id), {
       status: "recusada",
@@ -132,16 +181,16 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
     toast({ title: "Recusado" });
   }
 
-  // 🧠 COMANDANTE → ALTERAR PERMISSÃO
+  // 🧠 ALTERAR PERMISSÃO
   async function alterarPermissao(id: string) {
-    const nova = prompt("Nova permissão (comandante/sub-comandante/membro):");
+    const nova = prompt("Nova permissão:");
     if (!nova) return;
 
     await update(ref(db, "usuarios/" + id), {
       permissao: nova,
     });
 
-    toast({ title: "Permissão atualizada" });
+    toast({ title: "Atualizado" });
   }
 
   if (loading || !user) {
@@ -156,6 +205,30 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
         <p>{user.nome} • {user.permissao}</p>
       </div>
 
+      {/* 🧠 CRIAR USUÁRIO */}
+      {isComandante && (
+        <div className="border p-4 rounded space-y-2">
+          <h2 className="font-bold">Criar Usuário</h2>
+
+          <Input placeholder="Nome" value={novoNome} onChange={e => setNovoNome(e.target.value)} />
+          <Input placeholder="Email" value={novoEmail} onChange={e => setNovoEmail(e.target.value)} />
+          <Input placeholder="Senha" type="password" value={novaSenha} onChange={e => setNovaSenha(e.target.value)} />
+          <Input placeholder="Patente" value={novaPatente} onChange={e => setNovaPatente(e.target.value)} />
+
+          <select
+            className="w-full border p-2"
+            value={novaPermissao}
+            onChange={e => setNovaPermissao(e.target.value as any)}
+          >
+            <option value="membro">Membro</option>
+            <option value="sub-comandante">Sub</option>
+            <option value="comandante">Comandante</option>
+          </select>
+
+          <Button onClick={criarUsuario}>Criar</Button>
+        </div>
+      )}
+
       {/* 👥 USUÁRIOS */}
       <div className="space-y-2">
         {usuarios.map(u => (
@@ -166,7 +239,6 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
               <p className="text-sm">{u.patente} • {u.status}</p>
             </div>
 
-            {/* 👮 SUB */}
             {isSub && (
               <div className="flex gap-2">
                 <Input
@@ -178,10 +250,9 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
               </div>
             )}
 
-            {/* 🧠 COMANDANTE */}
             {isComandante && (
               <Button onClick={() => alterarPermissao(u.id)}>
-                Alterar Permissão
+                Permissão
               </Button>
             )}
 
@@ -201,14 +272,12 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
               <p className="text-sm">{s.criadoPor} • {s.status}</p>
             </div>
 
-            {/* 👮 SUB */}
             {isSub && s.status === "pendente" && (
               <Button onClick={() => encaminhar(s.id)}>
                 Encaminhar
               </Button>
             )}
 
-            {/* 🧠 COMANDANTE */}
             {isComandante && s.status === "analise" && (
               <div className="flex gap-2">
                 <Button onClick={() => aprovar(s)}>Aprovar</Button>
@@ -220,7 +289,6 @@ const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandant
 
           </div>
         ))}
-
       </div>
 
     </div>
