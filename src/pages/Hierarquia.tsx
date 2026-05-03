@@ -5,7 +5,7 @@ import {
   Shield,
   Award,
   ChevronDown,
-  ChevronUp,
+  Medal,
   Sword,
   Target,
   UserCheck,
@@ -22,8 +22,8 @@ const iconsMap: Record<string, React.ElementType> = {
   "1º Sargento": Target,
   "2º Sargento": Target,
   Cabo: UserCheck,
-  Soldado: ChevronUp,
-  Recruta: ChevronUp,
+  Soldado: Medal,
+  Recruta: Medal,
 };
 
 const descricoes: Record<string, string> = {
