@@ -44,7 +44,7 @@ export default function Painel() {
   const [loading, setLoading] = useState(true);
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([];
 
   const [novoValor, setNovoValor] = useState("");
 
@@ -96,6 +96,10 @@ export default function Painel() {
 
   // 👤 CRIAR USUÁRIO
   async function criarUsuario() {
+    if (!isComandante) {
+      return toast({ title: "Acesso negado", variant: "destructive" });
+    }
+
     if (!novoNome || !novoEmail || !novaSenha) {
       return toast({ title: "Preencha tudo", variant: "destructive" });
     }
@@ -115,7 +119,7 @@ export default function Painel() {
         status: "Ativo",
       });
 
-      toast({ title: "Usuário criado" });
+      toast({ title: "Usuário criado com sucesso" });
 
       setNovoNome("");
       setNovoEmail("");
@@ -143,7 +147,7 @@ export default function Painel() {
     });
 
     setNovoValor("");
-    toast({ title: "Solicitado" });
+    toast({ title: "Solicitação enviada" });
   }
 
   // 👮 SUB → ENCAMINHAR
@@ -152,7 +156,7 @@ export default function Painel() {
       status: "analise",
     });
 
-    toast({ title: "Encaminhado" });
+    toast({ title: "Enviado ao comandante" });
   }
 
   // 🧠 APROVAR
@@ -189,7 +193,7 @@ export default function Painel() {
     toast({ title: "Permissão atualizada" });
   }
 
-  // 🧠 ALTERAR PATENTE (NOVO)
+  // 🧠 ALTERAR PATENTE
   async function alterarPatente(id: string) {
     const nova = prompt("Nova patente:");
     if (!nova) return;
@@ -209,13 +213,13 @@ export default function Painel() {
     <div className="container mx-auto px-4 py-24 space-y-8">
 
       <div>
-        <h1 className="text-3xl font-bold">Painel</h1>
+        <h1 className="text-3xl font-bold uppercase">Painel</h1>
         <p>{user.nome} • {user.permissao}</p>
       </div>
 
       {/* 🧠 CRIAR USUÁRIO */}
       {isComandante && (
-        <div className="border p-4 rounded space-y-2">
+        <div className="border border-border bg-card p-4 rounded space-y-2">
           <h2 className="font-bold">Criar Usuário</h2>
 
           <Input placeholder="Nome" value={novoNome} onChange={e => setNovoNome(e.target.value)} />
@@ -223,13 +227,14 @@ export default function Painel() {
           <Input placeholder="Senha" type="password" value={novaSenha} onChange={e => setNovaSenha(e.target.value)} />
           <Input placeholder="Patente" value={novaPatente} onChange={e => setNovaPatente(e.target.value)} />
 
+          {/* ✅ SELECT CORRIGIDO */}
           <select
-            className="w-full border p-2"
+            className="w-full bg-background text-foreground border border-border rounded px-2 py-2"
             value={novaPermissao}
             onChange={e => setNovaPermissao(e.target.value as any)}
           >
             <option value="membro">Membro</option>
-            <option value="sub-comandante">Sub</option>
+            <option value="sub-comandante">Sub-Comandante</option>
             <option value="comandante">Comandante</option>
           </select>
 
@@ -247,7 +252,6 @@ export default function Painel() {
               <p className="text-sm">{u.patente} • {u.status}</p>
             </div>
 
-            {/* 👮 SUB */}
             {isSub && (
               <div className="flex gap-2">
                 <Input
@@ -259,7 +263,6 @@ export default function Painel() {
               </div>
             )}
 
-            {/* 🧠 COMANDANTE */}
             {isComandante && (
               <div className="flex gap-2">
                 <Button onClick={() => alterarPatente(u.id)}>
@@ -277,7 +280,7 @@ export default function Painel() {
 
       {/* 📦 SOLICITAÇÕES */}
       <div className="space-y-2">
-        <h2>Solicitações</h2>
+        <h2 className="font-bold">Solicitações</h2>
 
         {solicitacoes.map(s => (
           <div key={s.id} className="border p-4 rounded flex justify-between">
