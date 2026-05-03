@@ -22,8 +22,8 @@ const iconsMap: Record<string, React.ElementType> = {
   "1º Sargento": Target,
   "2º Sargento": Target,
   Cabo: UserCheck,
-  Soldado: User,
-  Recruta: User,
+  Soldado: ChevronUp,
+  Recruta: ChevronUp,
 };
 
 const descricoes: Record<string, string> = {
