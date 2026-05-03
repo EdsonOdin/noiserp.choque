@@ -31,6 +31,11 @@ type Solicitacao = {
 export default function Painel() {
   const navigate = useNavigate();
 
+const [novoNome, setNovoNome] = useState("");
+const [novoEmail, setNovoEmail] = useState("");
+const [novaSenha, setNovaSenha] = useState("");
+const [novaPatente, setNovaPatente] = useState("Recruta");
+const [novaPermissao, setNovaPermissao] = useState<"comandante" | "sub-comandante" | "membro">("membro");
   const [user, setUser] = useState<Usuario | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
