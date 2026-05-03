@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield } from "lucide-react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { ref, get } from "firebase/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,12 +16,6 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    // 🔥 apenas libera interface (não precisa mais de store)
-    setReady(true);
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,20 +31,50 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // 🔐 LOGIN COM FIREBASE
-      await signInWithEmailAndPassword(auth, email, senha);
+      // 🔐 LOGIN FIREBASE
+      const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+
+      const uid = userCredential.user.uid;
+
+      // 📦 BUSCAR DADOS DO USUÁRIO NO DATABASE
+      const snapshot = await get(ref(db, "usuarios/" + uid));
+
+      if (!snapshot.exists()) {
+        throw new Error("Usuário sem dados no sistema");
+      }
+
+      const userData = snapshot.val();
+
+      // 🚫 BLOQUEIO POR STATUS
+      if (userData.status !== "Ativo") {
+        toast({
+          title: "Acesso bloqueado",
+          description: `Status: ${userData.status}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 💾 SALVAR DADOS LOCAL (sessão)
+      localStorage.setItem("user", JSON.stringify({
+        uid,
+        ...userData
+      }));
 
       toast({
         title: "Acesso autorizado",
-        description: "Bem-vindo ao sistema",
+        description: `Bem-vindo, ${userData.nome}`,
       });
 
+      // 🚀 ENTRA NO PAINEL
       navigate("/painel");
 
     } catch (error: any) {
+      console.error(error);
+
       if (error.code === "auth/user-not-found") {
         toast({
-          title: "Usuário não autorizado",
+          title: "Usuário não encontrado",
           variant: "destructive",
         });
       } else if (error.code === "auth/wrong-password") {
@@ -59,7 +84,7 @@ export default function Login() {
         });
       } else {
         toast({
-          title: "Erro ao fazer login",
+          title: "Erro no login",
           description: error.message,
           variant: "destructive",
         });
@@ -91,39 +116,35 @@ export default function Login() {
         {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="email" className="uppercase text-xs tracking-wider">
+            <Label className="uppercase text-xs tracking-wider">
               Email
             </Label>
             <Input
-              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              autoComplete="username"
-              disabled={loading || !ready}
+              disabled={loading}
             />
           </div>
 
           <div>
-            <Label htmlFor="senha" className="uppercase text-xs tracking-wider">
+            <Label className="uppercase text-xs tracking-wider">
               Senha
             </Label>
             <Input
-              id="senha"
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              autoComplete="current-password"
-              disabled={loading || !ready}
+              disabled={loading}
             />
           </div>
 
           <Button
             type="submit"
             className="w-full uppercase tracking-wider"
-            disabled={loading || !ready}
+            disabled={loading}
           >
-            {loading ? "Entrando..." : ready ? "Entrar" : "Carregando..."}
+            {loading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
       </div>
