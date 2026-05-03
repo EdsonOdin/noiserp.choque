@@ -22,8 +22,8 @@ const iconsMap: Record<string, React.ElementType> = {
   "1º Sargento": Target,
   "2º Sargento": Target,
   Cabo: UserCheck,
-  Soldado: User,
-  Recruta: User,
+  Soldado: ChevronUp,
+  Recruta: ChevronUp,
 };
 
 const descricoes: Record<string, string> = {
@@ -65,7 +65,7 @@ export default function Hierarquia() {
                 style={{ animationDelay: `${i * 60}ms` }}
               >
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-accent flex items-center justify-center">
-                  <Icon size={20} className="text-muted-foreground" />
+                  <Icon size={20} className="lucide lucide-user text-muted-foreground h-[30px] w-[30px]" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
