@@ -37,15 +37,15 @@ export default function Painel() {
 
   const [novoValor, setNovoValor] = useState("");
 
-  // 🔐 AUTENTICAÇÃO + DADOS DO USUÁRIO
+  // 🔐 AUTENTICAÇÃO
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (!u) {
         navigate("/login");
         return;
       }
 
-      const snapshot = await onValue(ref(db, "usuarios/" + u.uid), (snap) => {
+      onValue(ref(db, "usuarios/" + u.uid), (snap) => {
         if (!snap.exists()) {
           navigate("/login");
           return;
@@ -63,11 +63,11 @@ export default function Painel() {
     return () => unsubscribe();
   }, []);
 
-  // 📦 USUÁRIOS EM TEMPO REAL
+  // 📦 USUÁRIOS
   useEffect(() => {
     const usuariosRef = ref(db, "usuarios");
 
-    const unsubscribe = onValue(usuariosRef, (snap) => {
+    return onValue(usuariosRef, (snap) => {
       if (!snap.exists()) return;
 
       const data = snap.val();
@@ -79,15 +79,13 @@ export default function Painel() {
 
       setUsuarios(lista);
     });
-
-    return () => unsubscribe();
   }, []);
 
   // 📦 SOLICITAÇÕES
   useEffect(() => {
     const refSol = ref(db, "solicitacoes");
 
-    const unsubscribe = onValue(refSol, (snap) => {
+    return onValue(refSol, (snap) => {
       if (!snap.exists()) {
         setSolicitacoes([]);
         return;
@@ -102,15 +100,14 @@ export default function Painel() {
 
       setSolicitacoes(lista);
     });
-
-    return () => unsubscribe();
   }, []);
 
   // 🧠 PERMISSÕES
   const isComandante = user?.permissao === "comandante";
   const isSub = user?.permissao === "sub-comandante";
+  const isMembro = user?.permissao === "membro";
 
-  // 📝 CRIAR SOLICITAÇÃO (MEMBRO)
+  // 📝 MEMBRO CRIA SOLICITAÇÃO
   async function solicitarAlteracao(usuarioId: string) {
     if (!novoValor) {
       toast({ title: "Digite um valor", variant: "destructive" });
@@ -121,7 +118,7 @@ export default function Painel() {
       usuarioId,
       tipo: "patente",
       valor: novoValor,
-      status: "pendente",
+      status: "pendente_sub",
       criadoPor: user?.nome,
     });
 
@@ -130,7 +127,16 @@ export default function Painel() {
     toast({ title: "Solicitação enviada" });
   }
 
-  // ✅ APROVAR (COMANDANTE)
+  // 👮 SUB ENVIA PARA COMANDANTE
+  async function enviarParaComandante(id: string) {
+    await update(ref(db, "solicitacoes/" + id), {
+      status: "pendente_cmd",
+    });
+
+    toast({ title: "Enviado ao comandante" });
+  }
+
+  // 🧠 COMANDANTE APROVA
   async function aprovar(s: Solicitacao) {
     await update(ref(db, "usuarios/" + s.usuarioId), {
       patente: s.valor,
@@ -167,12 +173,12 @@ export default function Painel() {
         </p>
       </div>
 
-      {/* 📋 USUÁRIOS */}
+      {/* 👥 USUÁRIOS */}
       <div className="space-y-3">
         <h2 className="text-xl font-bold">Usuários</h2>
 
         {usuarios.map((u) => (
-          <div key={u.id} className="border p-4 rounded flex justify-between">
+          <div key={u.id} className="border p-4 rounded flex justify-between items-center">
 
             <div>
               <p className="font-bold">{u.nome}</p>
@@ -181,8 +187,8 @@ export default function Painel() {
               </p>
             </div>
 
-            {/* 👇 MEMBRO */}
-            {!isComandante && (
+            {/* 👤 MEMBRO */}
+            {isMembro && (
               <div className="flex gap-2">
                 <Input
                   placeholder="Nova patente"
@@ -195,11 +201,18 @@ export default function Painel() {
               </div>
             )}
 
-            {/* 👇 COMANDANTE */}
+            {/* 👮 SUB */}
+            {isSub && (
+              <span className="text-blue-400 text-sm">
+                Controle intermediário
+              </span>
+            )}
+
+            {/* 🧠 COMANDANTE */}
             {isComandante && (
-              <div className="text-green-500 text-sm">
+              <span className="text-green-500 text-sm">
                 Controle total
-              </div>
+              </span>
             )}
           </div>
         ))}
@@ -210,16 +223,33 @@ export default function Painel() {
         <h2 className="text-xl font-bold">Solicitações</h2>
 
         {solicitacoes.map((s) => (
-          <div key={s.id} className="border p-4 rounded flex justify-between">
+          <div key={s.id} className="border p-4 rounded flex justify-between items-center">
 
             <div>
               <p>{s.tipo} → {s.valor}</p>
               <p className="text-sm text-muted-foreground">
-                {s.criadoPor} • {s.status}
+                {s.criadoPor}
+              </p>
+
+              <p className={
+                s.status === "pendente_sub" ? "text-yellow-500" :
+                s.status === "pendente_cmd" ? "text-blue-500" :
+                s.status === "aprovada" ? "text-green-500" :
+                "text-red-500"
+              }>
+                {s.status}
               </p>
             </div>
 
-            {isComandante && s.status === "pendente" && (
+            {/* 👮 SUB age */}
+            {isSub && s.status === "pendente_sub" && (
+              <Button onClick={() => enviarParaComandante(s.id)}>
+                Enviar ao comandante
+              </Button>
+            )}
+
+            {/* 🧠 COMANDANTE decide */}
+            {isComandante && s.status === "pendente_cmd" && (
               <div className="flex gap-2">
                 <Button onClick={() => aprovar(s)}>Aprovar</Button>
                 <Button variant="destructive" onClick={() => recusar(s.id)}>
