@@ -1,15 +1,17 @@
-import { ref, get, set } from "firebase/database";
-import { db } from "@/lib/firebase";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield } from "lucide-react";
+
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
 import { ref, get } from "firebase/database";
+
+import { auth, db } from "@/lib/firebase";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+
 import logoChoque from "@/assets/logo-choque.png";
 
 export default function Login() {
@@ -33,8 +35,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // 🔐 LOGIN FIREBASE
-      const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+      // 🔐 LOGIN NO FIREBASE AUTH
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        senha
+      );
 
       const uid = userCredential.user.uid;
 
@@ -57,11 +63,16 @@ export default function Login() {
         return;
       }
 
-      // 💾 SALVAR DADOS LOCAL (sessão)
-      localStorage.setItem("user", JSON.stringify({
+      // 💾 SALVAR SESSÃO LOCAL
+      const userSession = {
         uid,
-        ...userData
-      }));
+        ...userData,
+      };
+
+      localStorage.setItem("user", JSON.stringify(userSession));
+
+      // 🧠 LOG TÁTICO (debug)
+      console.log("Usuário logado:", userSession);
 
       toast({
         title: "Acesso autorizado",
@@ -72,7 +83,7 @@ export default function Login() {
       navigate("/painel");
 
     } catch (error: any) {
-      console.error(error);
+      console.error("Erro login:", error);
 
       if (error.code === "auth/user-not-found") {
         toast({
@@ -99,7 +110,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-16 bg-background">
       <div className="w-full max-w-md bg-card border border-border rounded-lg p-8 shadow-lg">
-        
+
         {/* HEADER */}
         <div className="flex flex-col items-center mb-6">
           <img
@@ -117,6 +128,7 @@ export default function Login() {
 
         {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-4">
+
           <div>
             <Label className="uppercase text-xs tracking-wider">
               Email
@@ -148,6 +160,7 @@ export default function Login() {
           >
             {loading ? "Entrando..." : "Entrar"}
           </Button>
+
         </form>
       </div>
     </div>
