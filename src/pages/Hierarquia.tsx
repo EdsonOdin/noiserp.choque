@@ -92,7 +92,7 @@ export default function Hierarquia() {
           >
             {showAll ? (
               <>
-                <ChevronUp size={16} /> Mostrar menos
+                <ChevronDown className="rotate-180" size={16} /> Mostrar menos
               </>
             ) : (
               <>
