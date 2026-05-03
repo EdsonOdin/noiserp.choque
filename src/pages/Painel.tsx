@@ -44,7 +44,7 @@ export default function Painel() {
   const [loading, setLoading] = useState(true);
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([];
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]); // ✅ CORRIGIDO
 
   const [novoValor, setNovoValor] = useState("");
 
@@ -227,7 +227,6 @@ export default function Painel() {
           <Input placeholder="Senha" type="password" value={novaSenha} onChange={e => setNovaSenha(e.target.value)} />
           <Input placeholder="Patente" value={novaPatente} onChange={e => setNovaPatente(e.target.value)} />
 
-          {/* ✅ SELECT CORRIGIDO */}
           <select
             className="w-full bg-background text-foreground border border-border rounded px-2 py-2"
             value={novaPermissao}
@@ -265,12 +264,8 @@ export default function Painel() {
 
             {isComandante && (
               <div className="flex gap-2">
-                <Button onClick={() => alterarPatente(u.id)}>
-                  Patente
-                </Button>
-                <Button onClick={() => alterarPermissao(u.id)}>
-                  Permissão
-                </Button>
+                <Button onClick={() => alterarPatente(u.id)}>Patente</Button>
+                <Button onClick={() => alterarPermissao(u.id)}>Permissão</Button>
               </div>
             )}
 
@@ -291,9 +286,7 @@ export default function Painel() {
             </div>
 
             {isSub && s.status === "pendente" && (
-              <Button onClick={() => encaminhar(s.id)}>
-                Encaminhar
-              </Button>
+              <Button onClick={() => encaminhar(s.id)}>Encaminhar</Button>
             )}
 
             {isComandante && s.status === "analise" && (
