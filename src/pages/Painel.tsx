@@ -40,18 +40,14 @@ type Solicitacao = {
 export default function Painel() {
   const navigate = useNavigate();
 
-  // 🔐 USER
   const [user, setUser] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 📦 DADOS
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
 
-  // ✍️ INPUTS
   const [novoValor, setNovoValor] = useState("");
 
-  // 👤 CRIAR USUÁRIO
   const [novoNome, setNovoNome] = useState("");
   const [novoEmail, setNovoEmail] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
@@ -190,7 +186,19 @@ export default function Painel() {
       permissao: nova,
     });
 
-    toast({ title: "Atualizado" });
+    toast({ title: "Permissão atualizada" });
+  }
+
+  // 🧠 ALTERAR PATENTE (NOVO)
+  async function alterarPatente(id: string) {
+    const nova = prompt("Nova patente:");
+    if (!nova) return;
+
+    await update(ref(db, "usuarios/" + id), {
+      patente: nova,
+    });
+
+    toast({ title: "Patente atualizada" });
   }
 
   if (loading || !user) {
@@ -232,13 +240,14 @@ export default function Painel() {
       {/* 👥 USUÁRIOS */}
       <div className="space-y-2">
         {usuarios.map(u => (
-          <div key={u.id} className="border p-4 rounded flex justify-between">
+          <div key={u.id} className="border p-4 rounded flex justify-between items-center">
 
             <div>
               <p className="font-bold">{u.nome}</p>
               <p className="text-sm">{u.patente} • {u.status}</p>
             </div>
 
+            {/* 👮 SUB */}
             {isSub && (
               <div className="flex gap-2">
                 <Input
@@ -250,10 +259,16 @@ export default function Painel() {
               </div>
             )}
 
+            {/* 🧠 COMANDANTE */}
             {isComandante && (
-              <Button onClick={() => alterarPermissao(u.id)}>
-                Permissão
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => alterarPatente(u.id)}>
+                  Patente
+                </Button>
+                <Button onClick={() => alterarPermissao(u.id)}>
+                  Permissão
+                </Button>
+              </div>
             )}
 
           </div>
