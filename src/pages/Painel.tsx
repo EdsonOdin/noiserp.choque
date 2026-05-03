@@ -6,7 +6,6 @@ import { ref, onValue, update, push } from "firebase/database";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 
 type Usuario = {
@@ -23,7 +22,7 @@ type Solicitacao = {
   usuarioId: string;
   tipo: string;
   valor: string;
-  status: string;
+  status: "pendente" | "analise" | "aprovada" | "recusada";
   criadoPor: string;
 };
 
@@ -33,72 +32,42 @@ export default function Painel() {
   const [user, setUser] = useState<Usuario | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
+  const [novoValor, setNovoValor] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const [novoValor, setNovoValor] = useState("");
-
-  // 🔐 AUTENTICAÇÃO
+  // 🔐 AUTH + DADOS
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (!u) {
-        navigate("/login");
-        return;
-      }
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (!u) return navigate("/login");
 
       onValue(ref(db, "usuarios/" + u.uid), (snap) => {
-        if (!snap.exists()) {
-          navigate("/login");
-          return;
-        }
+        if (!snap.exists()) return navigate("/login");
 
-        setUser({
-          id: u.uid,
-          ...snap.val(),
-        });
-
+        setUser({ id: u.uid, ...snap.val() });
         setLoading(false);
       });
     });
 
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
   // 📦 USUÁRIOS
   useEffect(() => {
-    const usuariosRef = ref(db, "usuarios");
-
-    return onValue(usuariosRef, (snap) => {
-      if (!snap.exists()) return;
+    return onValue(ref(db, "usuarios"), (snap) => {
+      if (!snap.exists()) return setUsuarios([]);
 
       const data = snap.val();
-
-      const lista = Object.keys(data).map((id) => ({
-        id,
-        ...data[id],
-      }));
-
-      setUsuarios(lista);
+      setUsuarios(Object.keys(data).map(id => ({ id, ...data[id] })));
     });
   }, []);
 
   // 📦 SOLICITAÇÕES
   useEffect(() => {
-    const refSol = ref(db, "solicitacoes");
-
-    return onValue(refSol, (snap) => {
-      if (!snap.exists()) {
-        setSolicitacoes([]);
-        return;
-      }
+    return onValue(ref(db, "solicitacoes"), (snap) => {
+      if (!snap.exists()) return setSolicitacoes([]);
 
       const data = snap.val();
-
-      const lista = Object.keys(data).map((id) => ({
-        id,
-        ...data[id],
-      }));
-
-      setSolicitacoes(lista);
+      setSolicitacoes(Object.keys(data).map(id => ({ id, ...data[id] })));
     });
   }, []);
 
@@ -107,36 +76,34 @@ export default function Painel() {
   const isSub = user?.permissao === "sub-comandante";
   const isMembro = user?.permissao === "membro";
 
-  // 📝 MEMBRO CRIA SOLICITAÇÃO
-  async function solicitarAlteracao(usuarioId: string) {
+  // 👮 SUB → CRIA SOLICITAÇÃO
+  async function solicitar(usuarioId: string) {
     if (!novoValor) {
-      toast({ title: "Digite um valor", variant: "destructive" });
-      return;
+      return toast({ title: "Digite um valor", variant: "destructive" });
     }
 
     await push(ref(db, "solicitacoes"), {
       usuarioId,
       tipo: "patente",
       valor: novoValor,
-      status: "pendente_sub",
+      status: "pendente",
       criadoPor: user?.nome,
     });
 
     setNovoValor("");
-
-    toast({ title: "Solicitação enviada" });
+    toast({ title: "Solicitação criada" });
   }
 
-  // 👮 SUB ENVIA PARA COMANDANTE
-  async function enviarParaComandante(id: string) {
+  // 👮 SUB → ENCAMINHAR
+  async function encaminhar(id: string) {
     await update(ref(db, "solicitacoes/" + id), {
-      status: "pendente_cmd",
+      status: "analise",
     });
 
     toast({ title: "Enviado ao comandante" });
   }
 
-  // 🧠 COMANDANTE APROVA
+  // 🧠 COMANDANTE → APROVAR
   async function aprovar(s: Solicitacao) {
     await update(ref(db, "usuarios/" + s.usuarioId), {
       patente: s.valor,
@@ -149,13 +116,25 @@ export default function Painel() {
     toast({ title: "Aprovado" });
   }
 
-  // ❌ RECUSAR
+  // 🧠 COMANDANTE → RECUSAR
   async function recusar(id: string) {
     await update(ref(db, "solicitacoes/" + id), {
       status: "recusada",
     });
 
     toast({ title: "Recusado" });
+  }
+
+  // 🧠 COMANDANTE → ALTERAR PERMISSÃO
+  async function alterarPermissao(id: string) {
+    const nova = prompt("Nova permissão (comandante/sub-comandante/membro):");
+    if (!nova) return;
+
+    await update(ref(db, "usuarios/" + id), {
+      permissao: nova,
+    });
+
+    toast({ title: "Permissão atualizada" });
   }
 
   if (loading || !user) {
@@ -165,91 +144,65 @@ export default function Painel() {
   return (
     <div className="container mx-auto px-4 py-24 space-y-8">
 
-      {/* HEADER */}
       <div>
-        <h1 className="text-3xl font-bold uppercase">Painel</h1>
-        <p className="text-sm text-muted-foreground">
-          {user.nome} • {user.permissao}
-        </p>
+        <h1 className="text-3xl font-bold">Painel</h1>
+        <p>{user.nome} • {user.permissao}</p>
       </div>
 
       {/* 👥 USUÁRIOS */}
-      <div className="space-y-3">
-        <h2 className="text-xl font-bold">Usuários</h2>
-
-        {usuarios.map((u) => (
-          <div key={u.id} className="border p-4 rounded flex justify-between items-center">
+      <div className="space-y-2">
+        {usuarios.map(u => (
+          <div key={u.id} className="border p-4 rounded flex justify-between">
 
             <div>
               <p className="font-bold">{u.nome}</p>
-              <p className="text-sm text-muted-foreground">
-                {u.patente} • {u.status}
-              </p>
+              <p className="text-sm">{u.patente} • {u.status}</p>
             </div>
 
-            {/* 👤 MEMBRO */}
-            {isMembro && (
+            {/* 👮 SUB */}
+            {isSub && (
               <div className="flex gap-2">
                 <Input
                   placeholder="Nova patente"
                   value={novoValor}
                   onChange={(e) => setNovoValor(e.target.value)}
                 />
-                <Button onClick={() => solicitarAlteracao(u.id)}>
-                  Solicitar
-                </Button>
+                <Button onClick={() => solicitar(u.id)}>Solicitar</Button>
               </div>
-            )}
-
-            {/* 👮 SUB */}
-            {isSub && (
-              <span className="text-blue-400 text-sm">
-                Controle intermediário
-              </span>
             )}
 
             {/* 🧠 COMANDANTE */}
             {isComandante && (
-              <span className="text-green-500 text-sm">
-                Controle total
-              </span>
+              <Button onClick={() => alterarPermissao(u.id)}>
+                Alterar Permissão
+              </Button>
             )}
+
           </div>
         ))}
       </div>
 
       {/* 📦 SOLICITAÇÕES */}
-      <div className="space-y-3">
-        <h2 className="text-xl font-bold">Solicitações</h2>
+      <div className="space-y-2">
+        <h2>Solicitações</h2>
 
-        {solicitacoes.map((s) => (
-          <div key={s.id} className="border p-4 rounded flex justify-between items-center">
+        {solicitacoes.map(s => (
+          <div key={s.id} className="border p-4 rounded flex justify-between">
 
             <div>
               <p>{s.tipo} → {s.valor}</p>
-              <p className="text-sm text-muted-foreground">
-                {s.criadoPor}
-              </p>
-
-              <p className={
-                s.status === "pendente_sub" ? "text-yellow-500" :
-                s.status === "pendente_cmd" ? "text-blue-500" :
-                s.status === "aprovada" ? "text-green-500" :
-                "text-red-500"
-              }>
-                {s.status}
-              </p>
+              <p className="text-sm">{s.criadoPor} • {s.status}</p>
             </div>
 
-            {/* 👮 SUB age */}
-            {isSub && s.status === "pendente_sub" && (
-              <Button onClick={() => enviarParaComandante(s.id)}>
-                Enviar ao comandante
+            {/* 👮 SUB */}
+            {isSub && s.status === "pendente" && (
+              <Button onClick={() => encaminhar(s.id)}>
+                Encaminhar
               </Button>
             )}
 
-            {/* 🧠 COMANDANTE decide */}
-            {isComandante && s.status === "pendente_cmd" && (
+            {/* 🧠 COMANDANTE */}
+            {isComandante && s.status === "analise" && (
               <div className="flex gap-2">
                 <Button onClick={() => aprovar(s)}>Aprovar</Button>
                 <Button variant="destructive" onClick={() => recusar(s.id)}>
@@ -257,12 +210,10 @@ export default function Painel() {
                 </Button>
               </div>
             )}
+
           </div>
         ))}
 
-        {solicitacoes.length === 0 && (
-          <p className="text-muted-foreground">Nenhuma solicitação</p>
-        )}
       </div>
 
     </div>
