@@ -204,10 +204,14 @@ export function updateSolicitacao(
 }
 
 // ----- Auth (sessão local) -----
-// ❌ LOGIN ANTIGO DESATIVADO
-export function login() {
-  console.warn("Login via store desativado. Use Firebase Auth.");
-  return null;
+export function login(nome: string, senha: string): Membro | null {
+  const membro = membrosCache.find(
+    (m) => m.nome.trim().toLowerCase() === nome.trim().toLowerCase() && m.senha === senha
+  );
+  if (!membro) return null;
+  if (membro.status !== "Ativo") return null;
+  localStorage.setItem(AUTH_KEY, JSON.stringify({ id: membro.id }));
+  return membro;
 }
   
 export function logout() {
