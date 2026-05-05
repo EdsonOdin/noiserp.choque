@@ -64,7 +64,7 @@ export default function Hierarquia() {
                 className="flex items-start gap-4 bg-card border border-border rounded-lg p-4 hover:border-muted-foreground/30 transition-colors animate-fade-in"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <div className="flex-shrink-0 w-14 h-14 rounded-md bg-accent flex items-center justify-center overflow-hidden">
+                <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center">
                   <img
                     src={img}
                     alt={`Insígnia ${patente}`}
