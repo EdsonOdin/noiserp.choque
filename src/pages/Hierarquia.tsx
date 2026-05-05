@@ -58,17 +58,20 @@ export default function Hierarquia() {
         <div className="space-y-3">
           {displayed.map((patente, i) => {
             const img = imagensMap[patente];
+            // Proporção: maior patente => maior insígnia
+            const sizes = ["w-12", "w-11", "w-10", "w-10", "w-9", "w-9", "w-8", "w-8", "w-7", "w-7"];
+            const sizeClass = sizes[i] || "w-9";
             return (
               <div
                 key={patente}
-                className="flex items-start gap-4 bg-card border border-border rounded-lg p-4 hover:border-muted-foreground/30 transition-colors animate-fade-in"
+                className="flex items-center gap-4 bg-card border border-border rounded-lg p-4 hover:border-muted-foreground/30 transition-colors animate-fade-in"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center">
+                <div className="flex-shrink-0 w-14 flex items-center justify-center">
                   <img
                     src={img}
                     alt={`Insígnia ${patente}`}
-                    className="w-full h-full object-contain"
+                    className={`${sizeClass} h-auto object-contain`}
                   />
                 </div>
                 <div className="flex-1">
