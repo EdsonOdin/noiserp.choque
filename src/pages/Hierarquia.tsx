@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { PATENTES } from "@/lib/store";
 
 import imgComandante from "@/assets/patentes/comandante.png";
 import imgSubComandante from "@/assets/patentes/sub-comandante.png";
@@ -13,30 +12,83 @@ import imgCabo from "@/assets/patentes/cabo.png";
 import imgSoldado from "@/assets/patentes/soldado.png";
 import imgRecruta from "@/assets/patentes/recruta.png";
 
+// NOVA ORDEM HIERÁRQUICA
+const PATENTES = [
+  "Diretor Geral",
+  "Diretor",
+  "Comandante Geral",
+  "Comandante",
+  "Sub Comandante",
+  "Corregedor Geral",
+  "Corregedoria",
+  "Supervisor",
+  "Coordenador",
+  "Coronel",
+  "Tenente Coronel",
+  "Major",
+  "Capitão",
+  "1º Tenente",
+  "2° Tenente",
+  "Aspirante",
+  "Sub Tenente",
+  "1º Sargento",
+  "2º Sargento",
+  "3º Sargento",
+  "Cabo",
+  "Soldado",
+  "Aluno",
+];
+
 const imagensMap: Record<string, string> = {
+  "Diretor Geral": imgComandante,
+  Diretor: imgComandante,
+  "Comandante Geral": imgComandante,
   Comandante: imgComandante,
-  "Sub-Comandante": imgSubComandante,
+  "Sub Comandante": imgSubComandante,
+  "Corregedor Geral": imgMajor,
+  Corregedoria: imgMajor,
+  Supervisor: imgCapitao,
+  Coordenador: imgTenente,
+  Coronel: imgMajor,
+  "Tenente Coronel": imgMajor,
   Major: imgMajor,
   Capitão: imgCapitao,
-  Tenente: imgTenente,
+  "1º Tenente": imgTenente,
+  "2° Tenente": imgTenente,
+  Aspirante: imgTenente,
+  "Sub Tenente": img1Sargento,
   "1º Sargento": img1Sargento,
   "2º Sargento": img2Sargento,
+  "3º Sargento": img2Sargento,
   Cabo: imgCabo,
   Soldado: imgSoldado,
-  Recruta: imgRecruta,
+  Aluno: imgRecruta,
 };
 
 const descricoes: Record<string, string> = {
-  Comandante: "Autoridade máxima da unidade. Controle total das operações e administração.",
-  "Sub-Comandante": "Segundo no comando. Auxilia e substitui o Comandante quando necessário.",
-  Major: "Responsável pela coordenação tática e planejamento de operações.",
-  Capitão: "Lidera equipes em campo e supervisiona treinamentos avançados.",
-  Tenente: "Oficial intermediário responsável por missões específicas.",
-  "1º Sargento": "Sargento sênior com responsabilidades de liderança operacional.",
-  "2º Sargento": "Auxiliar direto do 1º Sargento em operações de campo.",
-  Cabo: "Líder de esquadra com experiência comprovada em operações.",
-  Soldado: "Membro ativo com treinamento completo e apto para operações.",
-  Recruta: "Membro em fase de treinamento e avaliação inicial.",
+  "Diretor Geral": "Autoridade máxima da organização.",
+  Diretor: "Responsável pela gestão estratégica.",
+  "Comandante Geral": "Comando geral das operações.",
+  Comandante: "Responsável direto pelas unidades.",
+  "Sub Comandante": "Auxilia o comando principal.",
+  "Corregedor Geral": "Fiscaliza condutas e disciplina.",
+  Corregedoria: "Setor responsável por investigações internas.",
+  Supervisor: "Supervisiona operações e equipes.",
+  Coordenador: "Coordena setores específicos.",
+  Coronel: "Alta liderança operacional.",
+  "Tenente Coronel": "Subcomando estratégico.",
+  Major: "Coordenação tática.",
+  Capitão: "Liderança em campo.",
+  "1º Tenente": "Execução de missões.",
+  "2° Tenente": "Auxílio em operações.",
+  Aspirante: "Oficial em formação.",
+  "Sub Tenente": "Ligação entre oficiais e praças.",
+  "1º Sargento": "Liderança operacional sênior.",
+  "2º Sargento": "Apoio ao comando de equipe.",
+  "3º Sargento": "Execução e apoio tático.",
+  Cabo: "Comando de pequenas equipes.",
+  Soldado: "Operacional ativo.",
+  Aluno: "Em fase de formação.",
 };
 
 const INITIAL_SHOW = 5;
@@ -58,9 +110,10 @@ export default function Hierarquia() {
         <div className="space-y-3">
           {displayed.map((patente, i) => {
             const img = imagensMap[patente];
-            // Proporção: maior patente => maior insígnia
-            const sizes = ["w-12", "w-11", "w-10", "w-10", "w-9", "w-9", "w-8", "w-8", "w-7", "w-7"];
+
+            const sizes = Array(25).fill("w-9"); // padronizei tamanho pra não quebrar layout
             const sizeClass = sizes[i] || "w-9";
+
             return (
               <div
                 key={patente}
