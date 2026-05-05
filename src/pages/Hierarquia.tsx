@@ -1,32 +1,29 @@
 import { useState } from "react";
-import {
-  Crown,
-  Star,
-  Shield,
-  Award,
-  ChevronDown,
-  Medal,
-  Sword,
-  Target,
-  UserCheck,
-  User,
-  Gem,
-  ShieldCheck,
-  Swords,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { PATENTES } from "@/lib/store";
 
-const iconsMap: Record<string, React.ElementType> = {
-  Comandante: Crown,
-  "Sub-Comandante": Gem,
-  Major: Star,
-  Capitão: ShieldCheck,
-  Tenente: Shield,
-  "1º Sargento": Swords,
-  "2º Sargento": Sword,
-  Cabo: Target,
-  Soldado: UserCheck,
-  Recruta: User,
+import imgComandante from "@/assets/patentes/comandante.png";
+import imgSubComandante from "@/assets/patentes/sub-comandante.png";
+import imgMajor from "@/assets/patentes/major.png";
+import imgCapitao from "@/assets/patentes/capitao.png";
+import imgTenente from "@/assets/patentes/tenente.png";
+import img1Sargento from "@/assets/patentes/1-sargento.png";
+import img2Sargento from "@/assets/patentes/2-sargento.png";
+import imgCabo from "@/assets/patentes/cabo.png";
+import imgSoldado from "@/assets/patentes/soldado.png";
+import imgRecruta from "@/assets/patentes/recruta.png";
+
+const imagensMap: Record<string, string> = {
+  Comandante: imgComandante,
+  "Sub-Comandante": imgSubComandante,
+  Major: imgMajor,
+  Capitão: imgCapitao,
+  Tenente: imgTenente,
+  "1º Sargento": img1Sargento,
+  "2º Sargento": img2Sargento,
+  Cabo: imgCabo,
+  Soldado: imgSoldado,
+  Recruta: imgRecruta,
 };
 
 const descricoes: Record<string, string> = {
@@ -60,15 +57,19 @@ export default function Hierarquia() {
 
         <div className="space-y-3">
           {displayed.map((patente, i) => {
-            const Icon = iconsMap[patente] || Shield;
+            const img = imagensMap[patente];
             return (
               <div
                 key={patente}
                 className="flex items-start gap-4 bg-card border border-border rounded-lg p-4 hover:border-muted-foreground/30 transition-colors animate-fade-in"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-accent flex items-center justify-center">
-                  <Icon size={20} className="lucide lucide-user text-muted-foreground h-[30px] w-[30px]" />
+                <div className="flex-shrink-0 w-14 h-14 rounded-md bg-accent flex items-center justify-center overflow-hidden">
+                  <img
+                    src={img}
+                    alt={`Insígnia ${patente}`}
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
