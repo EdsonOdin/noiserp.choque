@@ -10,20 +10,23 @@ import {
   Target,
   UserCheck,
   User,
+  Gem,
+  ShieldCheck,
+  Swords,
 } from "lucide-react";
 import { PATENTES } from "@/lib/store";
 
 const iconsMap: Record<string, React.ElementType> = {
   Comandante: Crown,
-  "Sub-Comandante": Star,
-  Major: Shield,
-  Capitão: Award,
-  Tenente: Sword,
-  "1º Sargento": Target,
-  "2º Sargento": Target,
-  Cabo: UserCheck,
-  Soldado: Medal,
-  Recruta: Medal,
+  "Sub-Comandante": Gem,
+  Major: Star,
+  Capitão: ShieldCheck,
+  Tenente: Shield,
+  "1º Sargento": Swords,
+  "2º Sargento": Sword,
+  Cabo: Target,
+  Soldado: UserCheck,
+  Recruta: User,
 };
 
 const descricoes: Record<string, string> = {
